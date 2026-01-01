@@ -25,74 +25,77 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
-## Project setup
+ # URL Fetch API
+
+Small NestJS service that accepts URLs for background fetching and exposes results.
+
+## Features
+
+- `POST /fetch` — submit an array of HTTP/HTTPS URLs to be fetched later (validated with DTOs).
+- `GET /fetch` — list submitted URLs and their current status and metadata.
+- Swagger UI available at `/api` (see setup).
+
+## Getting started
 
 ```bash
-$ npm install
+npm install
+# ensure runtime deps are installed (if not already):
+npm install axios class-validator class-transformer @nestjs/swagger swagger-ui-express
+npm run start
 ```
 
-## Compile and run the project
+Open the Swagger UI: http://localhost:3000/api
+
+## Endpoints — examples
+
+### POST /fetch
+
+Request body example:
+
+```json
+{ "urls": ["https://example.com", "https://httpbin.org/redirect/1"] }
+```
+
+Curl example:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+curl -X POST http://localhost:3000/fetch \
+  -H "Content-Type: application/json" \
+  -d '{"urls":["https://example.com","https://httpbin.org/redirect/1"]}'
 ```
 
-## Run tests
+### GET /fetch
+
+Returns an array of items with fields: `url`, `finalUrl?`, `status`, `httpStatusCode?`, `content?`, `error?`.
+
+Curl example:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+curl http://localhost:3000/fetch
 ```
 
-## Deployment
+## Browser Console examples
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+```javascript
+// POST
+fetch('http://localhost:3000/fetch', {
+  method: 'POST',
+  headers: {'Content-Type':'application/json'},
+  body: JSON.stringify({ urls: ['https://example.com'] })
+}).then(r => r.json()).then(console.log).catch(console.error);
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+// GET
+fetch('http://localhost:3000/fetch').then(r => r.json()).then(console.log);
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## Notes
 
-## Resources
+- The service stores data in-memory (process lifetime). No persistence yet.
+- Fetching runs in background after enqueue; POST returns immediately with a summary.
+- The fetch feature is encapsulated in `src/fetch/` as a `FetchModule`.
 
-Check out a few resources that may come in handy when working with NestJS:
+## Next steps (optional)
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- Add persistence (database) to survive restarts.
+- Add e2e tests covering POST/GET and fetch processing.
+- Add a small HTML test page or manual trigger endpoint for demos.
