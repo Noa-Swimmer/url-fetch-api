@@ -1,46 +1,27 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
-
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
  # URL Fetch API
 
 Small NestJS service that accepts URLs for background fetching and exposes results.
 
 ## Features
 
-- `POST /fetch` — submit an array of HTTP/HTTPS URLs to be fetched later (validated with DTOs).
-- `GET /fetch` — list submitted URLs and their current status and metadata.
+- `POST /fetch` — accepts { "urls": string[] } and validates URLs with class-validator.
+- `GET /fetch` — returns an array of fetch items and their current status and metadata.
+- Data is stored in-memory (no persistence). 
+- Fetching runs in the background after enqueue.
 - Swagger UI available at `/api` (see setup).
+
+## Requirements
+ - Node 18+ (recommended)
+- npm
 
 ## Getting started
 
 ```bash
 npm install
-# ensure runtime deps are installed (if not already):
+# install runtime deps if missing:
 npm install axios class-validator class-transformer @nestjs/swagger swagger-ui-express
+```
+```bash
 npm run start
 ```
 
@@ -63,6 +44,10 @@ curl -X POST http://localhost:3000/fetch \
   -H "Content-Type: application/json" \
   -d '{"urls":["https://example.com","https://httpbin.org/redirect/1"]}'
 ```
+Response (example):
+```json
+{ "count": 2, "urls": ["https://example.com","https://httpbin.org/redirect/1"] }
+```
 
 ### GET /fetch
 
@@ -73,29 +58,44 @@ Curl example:
 ```bash
 curl http://localhost:3000/fetch
 ```
-
-## Browser Console examples
-
-```javascript
-// POST
-fetch('http://localhost:3000/fetch', {
-  method: 'POST',
-  headers: {'Content-Type':'application/json'},
-  body: JSON.stringify({ urls: ['https://example.com'] })
-}).then(r => r.json()).then(console.log).catch(console.error);
-
-// GET
-fetch('http://localhost:3000/fetch').then(r => r.json()).then(console.log);
+Response (example):
+```json
+[
+  { "url": "https://example.com", "finalUrl": "https://example.com", "status": "completed", "httpStatusCode": 200, "content": "<html>..." },
+  { "url": "http://no-such-host.example.invalid", "status": "failed", "error": "DNS lookup failed" }
+]
+```
+## Testing
+Run unit tests (Jest):
+```bash
+npm run test
 ```
 
-## Notes
+## Project structure
+```bash
+src/
+  fetch/
+    fetch.module.ts
+    fetch.controller.ts
+    fetch.service.ts
+    dto/create-fetch.dto.ts
+    fetch.service.spec.ts
+    fetch.controller.spec.ts
+  app.module.ts
+  main.ts
+ ```
+## Implementation Notes
 
-- The service stores data in-memory (process lifetime). No persistence yet.
-- Fetching runs in background after enqueue; POST returns immediately with a summary.
-- The fetch feature is encapsulated in `src/fetch/` as a `FetchModule`.
+- FetchService stores items in memory and processes pending items asynchronously
+  with limited concurrency. Redirects are handled automatically via Axios
+  (`maxRedirects`).
+- getAll()` returns a copy of internal items to prevent external mutation.
+- `processPending()` includes a processing guard to avoid overlapping executions
+  when multiple enqueue requests are received.
+- Error handling maps common network errors to friendly messages
+  (e.g. `ENOTFOUND` → "DNS lookup failed").
 
 ## Next steps (optional)
 
-- Add persistence (database) to survive restarts.
+- Add persistent storage (database) if you need data to survive restarts.
 - Add e2e tests covering POST/GET and fetch processing.
-- Add a small HTML test page or manual trigger endpoint for demos.
