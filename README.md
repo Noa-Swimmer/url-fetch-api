@@ -95,7 +95,7 @@ src/
 - Error handling maps common network errors to friendly messages
   (e.g. `ENOTFOUND` → "DNS lookup failed").
 
-## Next steps (optional)
+## Next steps
 
-- Add persistent storage (database) if you need data to survive restarts.
+- Add persistent storage (database).
 - Add e2e tests covering POST/GET and fetch processing.
