@@ -77,4 +77,17 @@ describe('FetchService', () => {
     expect(item.status).toBe('failed');
     expect(item.error).toBe('DNS lookup failed');
   });
+
+  it('processPending records timeout errors as failed with friendly message', async () => {
+    (service as any).store.length = 0;
+    (service as any).store.push({ url: 'http://timeout.example.invalid', status: 'pending' } as FetchItem);
+
+    mockedAxios.get.mockRejectedValueOnce({ code: 'ETIMEDOUT', message: 'timeout' });
+
+    await service.processPending(1);
+
+    const item: FetchItem = (service as any).store[0];
+    expect(item.status).toBe('failed');
+    expect(item.error).toBe('Timeout');
+  });
 });
