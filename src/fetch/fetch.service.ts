@@ -16,6 +16,7 @@ export interface FetchItem {
 export class FetchService {
     private readonly logger = new Logger(FetchService.name);
     private readonly store: FetchItem[] = [];
+    private processing = false;
 
     // Enqueue URLs for later fetching. Stores items in-memory with 'pending' status.
     // Starts background processing (fire-and-forget) that will attempt to fetch pending items.
@@ -35,26 +36,39 @@ export class FetchService {
         };
     }
 
-    // Return all stored fetch items (does not perform any network I/O).
+    /**
+     * Return a shallow copy of stored fetch items. Caller should not be able to
+     * mutate internal storage.
+     */
     getAll(): FetchItem[] {
-        return this.store;
+        return this.store.map((i) => ({ ...i }));
     }
 
     // Process pending items with limited concurrency.
+    /**
+     * Process pending items with limited concurrency. Uses a processing flag
+     * to avoid overlapping runs when called multiple times.
+     */
     async processPending(concurrency = 5): Promise<void> {
-        const pending = this.store.filter((s) => s.status === 'pending');
-        if (pending.length === 0) return;
+        if (this.processing) return;
+        this.processing = true;
+        try {
+            const pending = this.store.filter((s) => s.status === 'pending');
+            if (pending.length === 0) return;
 
-        // chunk pending items to limit concurrency
-        const chunks: FetchItem[][] = [];
-        for (let i = 0; i < pending.length; i += concurrency) {
-            chunks.push(pending.slice(i, i + concurrency));
-        }
+            // chunk pending items to limit concurrency
+            const chunks: FetchItem[][] = [];
+            for (let i = 0; i < pending.length; i += concurrency) {
+                chunks.push(pending.slice(i, i + concurrency));
+            }
 
-        for (const chunk of chunks) {
-            await Promise.all(
-                chunk.map((item) => this.fetchItem(item).catch((err) => this.logger.debug(err))),
-            );
+            for (const chunk of chunks) {
+                await Promise.all(
+                    chunk.map((item) => this.fetchItem(item).catch((err) => this.logger.debug(err))),
+                );
+            }
+        } finally {
+            this.processing = false;
         }
     }
 
