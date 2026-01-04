@@ -10,7 +10,7 @@ export class FetchService {
 
     enqueue(urls: string[]) {
         const items = urls.map((url) => {
-            const item: FetchItem = { url, status: 'pending' };
+            const item: FetchItem = { url, status: FetchStatus.Pending };
             this.store.push(item);
             return item;
         });
@@ -31,7 +31,7 @@ export class FetchService {
         if (this.processing) return;
         this.processing = true;
         try {
-            const pending = this.store.filter((s) => s.status === 'pending');
+            const pending = this.store.filter((s) => s.status === FetchStatus.Pending);
             if (pending.length === 0) return;
 
             // chunk pending items to limit concurrency
@@ -50,18 +50,16 @@ export class FetchService {
         }
     }
 
-    // Fetch a single item and update its fields accordingly. Never throws.
     private async fetchItem(item: FetchItem): Promise<void> {
         try {
             const response = await axios.get(item.url, {
                 maxRedirects: 5,
                 timeout: 10000,
                 responseType: 'text',
-                validateStatus: () => true, // do not throw for non-2xx; handle below
+                validateStatus: () => true, 
             });
 
-            // attempt to read final URL from axios internal request info
-            // follow-redirects exposes final URL at response.request.res.responseUrl in Node
+
             const finalUrl =
                 response.request?.res?.responseUrl ??
                 response.config?.url ??
@@ -71,17 +69,17 @@ export class FetchService {
             item.httpStatusCode = response.status;
 
             if (response.status >= 200 && response.status < 300) {
-                // success
+       
                 const data = response.data;
                 item.content = typeof data === 'string' ? this.truncate(data) : this.truncate(JSON.stringify(data));
-                item.status = 'completed';
+                item.status = FetchStatus.Completed;
             } else {
-                item.status = 'failed';
+                item.status = FetchStatus.Failed;
                 item.error = `HTTP ${response.status}`;
             }
         } catch (err: any) {
-            // handle network, timeout, invalid URL, etc.
-            item.status = 'failed';
+
+            item.status = FetchStatus.Failed;
             if (err && err.code === 'ENOTFOUND') {
                 item.error = 'DNS lookup failed';
             } else if (err && err.code === 'ETIMEDOUT') {

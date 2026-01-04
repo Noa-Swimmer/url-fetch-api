@@ -1,4 +1,8 @@
-export type FetchStatus = 'pending' | 'completed' | 'failed';
+export enum FetchStatus {
+    Pending = 'pending',
+    Completed = 'completed',
+    Failed = 'failed',
+}
 
 export interface FetchItem {
   url: string;
