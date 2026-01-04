@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { FetchService, FetchItem } from './fetch.service';
+import { FetchService } from './fetch.service';
+import { FetchItem } from './types';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;

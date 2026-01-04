@@ -1,16 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
-
-export type FetchStatus = 'pending' | 'completed' | 'failed';
-
-export interface FetchItem {
-    url: string;
-    finalUrl?: string;
-    status: FetchStatus;
-    httpStatusCode?: number;
-    content?: string;
-    error?: string;
-}
+import { FetchItem, FetchStatus } from './types';
 
 @Injectable()
 export class FetchService {
@@ -18,8 +8,6 @@ export class FetchService {
     private readonly store: FetchItem[] = [];
     private processing = false;
 
-    // Enqueue URLs for later fetching. Stores items in-memory with 'pending' status.
-    // Starts background processing (fire-and-forget) that will attempt to fetch pending items.
     enqueue(urls: string[]) {
         const items = urls.map((url) => {
             const item: FetchItem = { url, status: 'pending' };
@@ -27,7 +15,6 @@ export class FetchService {
             return item;
         });
 
-        // start processing asynchronously; do not await here to keep endpoint responsive
         this.processPending().catch((err) => this.logger.error('Background processing error', err));
 
         return {
@@ -36,19 +23,10 @@ export class FetchService {
         };
     }
 
-    /**
-     * Return a shallow copy of stored fetch items. Caller should not be able to
-     * mutate internal storage.
-     */
     getAll(): FetchItem[] {
         return this.store.map((i) => ({ ...i }));
     }
 
-    // Process pending items with limited concurrency.
-    /**
-     * Process pending items with limited concurrency. Uses a processing flag
-     * to avoid overlapping runs when called multiple times.
-     */
     async processPending(concurrency = 5): Promise<void> {
         if (this.processing) return;
         this.processing = true;
